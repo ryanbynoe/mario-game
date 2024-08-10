@@ -1,4 +1,4 @@
-# main.tf
+# File contains Terraform Code to Create Azure Kuberneteds Cluster
 
 resource "azurerm_resource_group" "aks_rg" {
   name     = var.resource_group_name

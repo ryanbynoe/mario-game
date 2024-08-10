@@ -2,13 +2,13 @@
 
 
 
-## Table of Contents
+# Table of Contents
 - [Prerequisites](#prerequisites)
 - [Walkthrough](#walkthrough)
 - [Result](#result)
 - [Challenges](#challenges)
 
-## Prerequisites
+# Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/install)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -17,10 +17,31 @@
 = [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [Vscode](https://code.visualstudio.com)
 
-## Walkthrough
+# Walkthrough
+## Terraform
 
+## Initialize Terraform
+```
+terraform init
+```
 
-## Challenges
+## Plan Resources
+```
+terraform plan -var-file="vars/east-us-2.tfvars"
+```
+
+## Apply Resources
+```
+terraform apply -var-file="vars/east-us-2.tfvars"
+
+```
+
+## Cleanup Terraform Resources
+```
+terraform destroy -var-file="vars/east-us-2.tfvars"
+```
+
+# Challenges
 
 
 
