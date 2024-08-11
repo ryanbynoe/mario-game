@@ -105,6 +105,93 @@ Use `kubectl cluster-info` to verify the connection to the AKS cluster.
 ### Caveat
 - If kubectl is installed after opening VS Code, restart VS Code to refresh environment variables.
 
+### Terraform Deployment Steps
+These will be the same steps as Azure Terraform.
+1. Run `terraform init` to initialize required providers.
+2. Execute `terraform plan` to preview resources to be created.
+3. Run `terraform apply` to deploy Argo CD on the AKS cluster.
+![argocdtf](/assets/argocdterraform.png)
+![akscluster](/assets/successcluster.png)
+
+### Resources Created
+- ArgoCD namespace
+- ArgoCD installation in the ArgoCD namespace
+- Load balancer for Argo CD
+
+### Verification
+1. Use `kubectl get svc -n argocd` to verify the created services.
+2. Note the external IP of the Argo CD server load balancer.
+3. Go to the external IP address, bypass by going to advanced, and proceed to IP. A certificate has not been established.
+
+![argocdserver](/assets/argocdserver.png)
+![argocdapp](/assets/argocdsuccess.png)
+
+### Logging into Argo CD
+1. Default username: `admin`
+2. To get the default password, run:
+   ```
+   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+   ```
+![password](/assets/base64pass.png)
+
+3. Decode the base64 password. paste the base64 password in a text file in VS. Select the password, right click into base64, and press base64 decode. (Install VS Code Base64 extension).
+4. Log in to the Argo CD dashboard using these credentials.
+
+![argocsignin](/assets/argosignsuccess.png)
+
+### AWS EC2 with Docker and SonarQube Teraform
+
+### 1. Locate and Update VPC ID
+1. Log in to AWS Console
+2. I used region us-east-2 because I had a VPC already setup. The repo uses us-west-2.
+3. Navigate to VPC service
+4. Find the VPC ID you want to use
+5. Copy the VPC ID
+6. Update the `vpc_id` variable in `vars/dev-west-2.tfvars` file if using from repo. If using mine, update the `vars/east-us-2.tfvars`
+
+### 2. Generate and Configure AWS Key Pair
+1. In AWS Console, navigate to EC2 service
+2. Go to "Key Pairs" under Network & Security
+3. Click "Create Key Pair"
+4. Name the key pair (lowercase) (e.g., "awsterraformkey")
+5. Download the .pem file
+6. Place the downloaded .pem file in the root of your Terraform project directory
+7. Update the `key_name` variable in `vars/dev-west-2.tfvars` file with the name of your key pair (without the .pem extension)
+
+### Verify
+- Ensure the VPC ID is correctly updated in `vars/dev-west-2.tfvars` or `vars/east-us-2.tfvars`
+- Confirm the key pair .pem file is in the root directory of your project
+- Verify the key name is correctly updated in `vars/dev-west-2.tfvars` or `vars/east-us-2.tfvars`
+
+### Terraform Deployment Steps
+1. Run `terraform init` to initialize working directory.
+    - This will create a Terraform lock file and install the AWS provider plugin.
+2. Execute `terraform plan` to preview resources to be created.
+    - `terraform plan -var-file= "vars/dev-west-2.tfvars"`
+    - or `terraform plan -var-file= "vars/east-us-2.tfvars"`
+3. Run `terraform apply` to deploy Argo CD on the AKS cluster.
+    - `terraform apply -var-file= "vars/dev-west-2.tfvars"`
+        or `terraform apply -var-file= "vars/east-us-2.tfvars"`
+4.    
+    - Type 'yes' when prompted to confirm resource creation.
+   - This will create an EC2 instance and attach a security group to it.
+   - Docker and SonarQube will be deployed on the EC2 instance.
+
+### Verifying the Infrastructure
+4. Check the AWS Console:
+   - Go to EC2 service
+   - Verify the created instance named "SonarQube instance"
+   - Check the security group attached to the instance (ports 22 and 9000 should be open)
+
+5. Access SonarQube:
+   - Copy the public IP address of the EC2 instance
+   - Open a web browser and navigate to `http://<EC2-Public-IP>:9000`
+   - Default login credentials: username `admin`, password `admin`
+   - You will be prompted to change the password on first login
+
+![ec2](/assets/sonarqrunning.png)
+![sg](/assets/sonarqubesg.png)
+![ec22](/assets/sonarqpage.png)
 
 
 
