@@ -473,6 +473,359 @@ jobs:
 ### Current Limitation
 The current implementation doesn't update the `version.txt` file after pushing a new image. This means subsequent runs will always increment from the original value in `version.txt`.
 
+### Steps to Implement Container Scanning
+1. Create a new GitHub Actions workflow file: `run-container-scan-super-mario-image.yaml`
+2. Push the code to the remote GitHub repository
+
+```yaml
+name: Run Container Scan on Super Mario Docker Image with Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  VERSION: ${{ github.run_number }}
+
+jobs:
+  run-container-image-scan-on-super-mario-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get Docker image from Docker Hub
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/super-mario-gitops-project:${{ env.VERSION }}
+          docker save -o ${{ github.workspace }}/super-mario-latest-docker-image.tar ${{ secrets.DOCKERHUB_USERNAME }}/super-mario-gitops-project:${{ env.VERSION }}
+
+      - name: Run Trivy vulnerability scanner in tarball mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: ${{ github.workspace }}/super-mario-latest-docker-image.tar
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+```
+### Key Components
+1. **Docker Hub Authentication**: Uses secrets for secure login
+2. **Image Pulling**: Pulls the latest Super Mario image from Docker Hub
+3. **Image Saving**: Saves the pulled image as a tar file
+4. **Trivy Scanner**: Runs a vulnerability scan on the saved image
+   - Exit code 1: Fails the build if critical or high vulnerabilities are found
+   - Exit code 0: Allows the build to pass regardless of vulnerabilities (for testing)\
+
+### Pushing and Executing the Workflow
+1. Move the YAML file to the `.github/workflows/` directory
+2. Commit and push changes to the GitHub repository
+   ```
+   git add .
+   git commit -m "Added container scan with quality gate in DevSecOps pipeline while learning GitOps principles"
+   git push
+   ```
+3. Observe the workflow execution in the GitHub Actions tab
+
+### Modifying the Workflow to Pass Despite Vulnerabilities
+1. Change the exit code in the YAML file from 1 to 0
+2. Commit and push the changes
+   ```
+   git add .
+   git commit -m "Pass the DevSecOps pipeline even if there are security vulnerabilities in Docker image"
+   git push
+   ```
+3. Observe the new workflow execution
+
+### Setting Up Argo CD Application
+
+1. Log in to Argo CD dashboard
+2. Click on "New App" button
+3. Configure the application:
+   - Application Name: `super-mario-game-deployment` (use lowercase)
+   - Project Name: `default`
+   - Sync Policy: Select "Automatic"
+   - Source:
+     - Repository URL: [Your GitHub Repo URL]
+     - Revision: `HEAD`
+     - Path: `.` (period symbol for root directory)
+   - Destination:
+     - Cluster URL: Select the default Kubernetes cluster URL
+     - Namespace: `default` (or your preferred namespace)
+4. Click "Create" to create the application
+
+![ag](/assets/supermarioappargo.png)
+![ag2](/assets/supermarioappargo2.png)
+![ag3](/assets/supermarioappargo3.png)
+![ag4](/assets/supermarioappargo4.png)
+
+### Key Points
+- Auto-sync is enabled by default with this configuration
+- Argo CD checks for changes every 3 minutes
+- Any changes in the `deployment.yaml` file will trigger a new deployment
+
+### Creating the Deployment YAML File
+1. Create a file named `deployment.yaml` in the root of your GitHub repository
+2. Add the following content to the file:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supermariogame-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supermariogame
+  template:
+    metadata:
+      labels:
+        app: supermariogame
+    spec:
+      containers:
+      - image: ryanabynoe/supermarioproject:2
+        name: supermariogame-container
+        ports:
+        - containerPort: 8080
+ 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supermariogame-service
+spec:
+  selector:
+    app: supermariogame
+  ports:
+  - protocol: TCP
+    port: 8600  # <-- Change this line to your desired port
+    targetPort: 8080
+  type: LoadBalancer
+```
+### Verifying the Deployment
+1. Check Argo CD dashboard for the new deployment
+2. Verify the pod creation in Argo CD
+3. Check the load balancer service created by Argo CD
+
+![agdep](/assets/argocddeployment.png)
+
+
+### Accessing the Super Mario Game
+1. Copy the load balancer IP address from the Argo CD service details
+2. Open a new browser tab and navigate to `http://<load-balancer-ip>:8600`
+3. The Super Mario game should load in the browser
+
+![ag4](/assets/supermarioloadbalancer.png)
+
+### Playing the Game
+- Press 'Y' to start the game
+- Use arrow keys to navigate
+- Press 'S' for jump and other gameplay moves
+
+![mario](/assets/mariogamedeployed.png)
+
+### Pushing Changes and Waiting for Argo CD
+1. Commit and push the `deployment.yaml` file to your GitHub repository
+2. Wait for approximately 3 minutes for Argo CD to detect the changes
+
+## Implementing End-to-End GitOps Pipeline
+
+### Steps Overview
+1. Make code changes to Super Mario game controls
+2. Add end-to-end GitOps YAML file for GitHub Actions
+3. Set up repository secrets in GitHub
+4. Push changes to remote GitHub repository
+5. Verify new Docker image tag in Docker Hub
+6. Check for updated version in version.txt and deployment.yaml
+7. Wait for Argo CD to detect and deploy changes
+8. Verify new game controls in deployed Super Mario game
+
+### 1. Code Changes
+- Update `webapp/code/titlestate.js` file
+- Change "Press Y to start game" to "Press S to start"
+- Modify game controls to use 'S' key consistently
+
+### 2. Adding End-to-End GitOps YAML File
+- Create `end-to-end-gitops.yaml` in `.github/workflows/` directory
+- Add workflow code for:
+  - Static application security testing with SonarQube
+  - Building and pushing Docker image with dynamic tag
+  - Running container scan
+  - Updating deployment and version files
+
+### 3. Setting Up Repository Secrets
+Ensure the following secrets are set in GitHub repository:
+- `DOCKERHUB_TOKEN`
+- `DOCKERHUB_USERNAME`
+- `SONAR_HOST_URL`
+- `SONAR_TOKEN`
+- `GIT_EMAIL`
+- `GIT_USERNAME`
+
+### Prerequisites
+- Ensure SonarQube is running
+- Verify all repository secrets are correct (SonarQube URL, tokens, Docker Hub credentials, Git email and username)
+
+### Workflow Execution Steps
+
+1. **Code Commit and Push**
+   - Commit changes including the end-to-end GitOps YAML file and game control modifications
+   - Push changes to the GitHub repository
+
+2. **SonarQube SAST Scan**
+   - Successfully executed
+   - Results viewable in SonarQube dashboard
+   - Identified code smells, bugs, and security hotspots
+
+3. **Docker Image Build and Push**
+   - New image tag (3) automatically generated
+   - Image successfully pushed to Docker Hub
+
+4. **Container Image Scan**
+   - Trivy scanner identified 40 vulnerabilities (36 high, 4 critical)
+
+5. **Update Deployment Files**
+   - `deployment.yaml` and `version.txt` updated with new image tag (3)
+   - Changes automatically committed and pushed to the repository
+
+6. **Argo CD Sync**
+   - Detected changes after approximately 3 minutes
+   - Automatically deployed new image to Azure Kubernetes Service
+
+### Verification
+1. Check Argo CD dashboard for successful sync
+2. Verify pod details in Argo CD showing new image tag
+3. Access the Super Mario game via load balancer URL
+4. Confirm new game controls (S key) and updated start screen text
+
+### Results
+- Entire pipeline execution completed in about 2 minutes
+- Continuous Integration, Security, and Deployment achieved
+- Changes successfully reflected in the deployed application
+
+### Key Observations
+- No manual intervention required after initial code push
+- GitHub maintained as single source of truth
+- Automated security scanning and deployment processes
+
+## Cleaning Up Resources
+
+### Destroying Argo CD and Related Resources
+
+1. Navigate to the GitOps, AKS, Argo CD, Terraform repository
+
+2. Run the Terraform destroy command:
+   ```
+   terraform destroy -var-file=./vars/dev-west-2.tfvars
+   ```
+
+3. Review the resources to be destroyed:
+   - Argo CD namespace
+   - Argo CD installation
+   - Load balancer for Argo CD
+
+4. Confirm the destruction by typing 'yes' when prompted
+
+5. Wait for Terraform to complete the resource destruction (approximately 35 seconds)
+
+### Verification Steps
+
+1. Check for any remaining services in the Argo CD namespace:
+   ```
+   kubectl get svc -n argocd
+   ```
+   Expected result: No resources found
+
+2. Verify the deletion of the Argo CD namespace:
+   ```
+   kubectl get namespaces
+   ```
+   Expected result: Argo CD namespace should not be listed
+
+### Important Notes
+- Always destroy Argo CD related resources before destroying the Azure Kubernetes cluster
+- This cleanup process ensures that all resources created by Terraform are properly removed
+- Verify the absence of resources after the destroy command to ensure complete cleanup
+
+## Cleaning Up Azure Cloud Resources
+
+### Important Note
+Always clean up resources to avoid unnecessary charges in your Azure Cloud account.
+
+### Using Terraform Destroy
+
+1. Navigate to the GitOps AKS Terraform infra repository
+
+2. Run the Terraform destroy command:
+   ```
+   terraform destroy -var-file=./vars/dev-west-2.tfvars
+   ```
+
+3. Review the resources to be destroyed:
+   - Kubernetes cluster
+   - Cluster node pool (user pool)
+   - Resource group
+
+4. Confirm the destruction by typing 'yes' when prompted
+
+5. Wait for Terraform to complete the resource destruction (approximately 10 minutes)
+
+### Resources Destroyed by Terraform
+- User node pool (~ 1 minute)
+- AKS cluster (~ 2 minutes)
+- AKS resource group
+
+### Manual Cleanup
+1. Check the Azure Portal "All resources" section for any remaining resources
+2. Manually delete any resources not removed by Terraform
+
+### Verification
+- Refresh the Azure Portal to confirm all resources have been removed
+
+### Important Notes
+- Some dependent or transitive resources may not be cleaned up automatically by Terraform
+- Always verify in the Azure Portal that all resources have been deleted
+- Be prepared to manually delete any lingering resources to ensure complete cleanup
+
+## Cleaning Up AWS Infrastructure
+
+### Using Terraform Destroy
+
+1. Run the Terraform destroy command with the appropriate variable file:
+   ```
+   terraform destroy -var-file=./vars/east-us-2.tfvars
+   ```
+
+2. Review the resources to be destroyed:
+   - AWS EC2 instance
+   - Security group attached to the EC2 instance
+
+3. Confirm the destruction by typing 'yes' when prompted
+
+4. Wait for Terraform to complete the resource destruction
+
+### Resources Destroyed by Terraform
+- AWS EC2 instance
+- Security group attached to the EC2 instance
+
+### Verification
+1. Check the AWS Console to confirm the EC2 instance state has changed to "terminated"
+2. Refresh the AWS Console to ensure no instances are running
+
+### Important Notes
+- Always clean up resources at the end of the course to avoid unnecessary charges in your AWS account
+- Verify in the AWS Console that all resources have been properly terminated
+- The Terraform destroy command should remove both the EC2 instance and its associated security group
+
+### Final Step
+Ensure all resources created for this course are destroyed to prevent any unexpected AWS charges.
 
 # Challenges
 
@@ -480,6 +833,9 @@ Error with Microsoft.ContainerService. Resolution: Confirming my subscription ha
 ![challenge1](/assets/challenge1error.png)
 ![challenge1](/assets/challengge1.jpg)
 
+# Credits
 
+Raghu The Security Expert
+Udemy: www.udemy.com/course/gitops-with-kubernetes-terraform-azure-and-aws/
 
 
