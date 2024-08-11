@@ -193,7 +193,89 @@ These will be the same steps as Azure Terraform.
 ![sg](/assets/sonarqubesg.png)
 ![ec22](/assets/sonarqpage.png)
 
+# THE FUN: Super Mario Game Deployment!
 
+### Setup Steps for SonarQube Integration
+
+1. Fork Super Mario game GitHub repo and the clone.
+2. Open repo in Visual Studio Code 
+
+### YAML File Structure (`.github/workflows/gitops.yaml`)
+Inside the new gitops.yaml:
+```yaml
+name: Run SAST scan on Super Mario Game Project
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sonarqube-sast-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+```
+
+4. **Steps**:
+   - **Checkout Repository**: Uses `actions/checkout@v3` to fetch the repository code.
+     - `fetch-depth: 0` ensures all history for all branches and tags is fetched.
+   - **SonarQube Scan**: Uses `sonarsource/sonarqube-scan-action@master` to run the scan.
+     - Requires two environment variables:
+       - `SONAR_HOST_URL`: URL of your SonarQube instance.
+       - `SONAR_TOKEN`: Authentication token for SonarQube.
+       - The two environment variables will be set up in Github actions.
+
+### Creating a SonarQube Project
+
+1. Log in to SonarQube dashboard
+2. Click on "Create project manually"
+3. Set project display name (e.g., "devsecops-pipeline")
+4. Note down the project key
+5. Set the main branch name (e.g., "main" or "master")
+6. Choose GitHub Actions integration
+
+![s1](/assets/sonarqj1.png)
+![s2](/assets/sonarqj2.png)
+
+### Generating SonarQube Token
+1. Click on "Generate a token"
+2. Set token expiration (or choose "No expiration")
+3. Generate and copy the token (it will be shown only once)
+![s3](/assets/sonarqj3.png)
+
+### Creating sonar-project.properties File
+1. Create a file named `sonar-project.properties` in the root of your repository
+2. Add the following content:
+   ```
+   sonar.projectKey=devsecops-pipeline
+   ```
+   Replace `devsecops-pipeline` with your actual project key
+
+### Setting Up GitHub Repository Secrets
+1. Go to your GitHub repository settings
+2. Navigate to Secrets and Variables > Actions
+3. Add two new repository secrets:
+   - Name: `SONAR_HOST_URL`
+     Value: Your SonarQube instance URL
+   - Name: `SONAR_TOKEN`
+     Value: The token generated in SonarQube
+![s4](/assets/githubactions.png)
+
+### Final Steps
+1. Ensure all files are committed:
+   - `.github/workflows/gitops.yaml`
+   - `sonar-project.properties`
+2. Push the changes to your GitHub repository
 
 # Challenges
 
