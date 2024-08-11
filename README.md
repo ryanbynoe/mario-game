@@ -1,3 +1,5 @@
+# Deploy Mario Game with GitOps Practices!
+![mario](/assets/marioproject.gif)
 # Table of Contents
 - [Key Technologies](#keytechnologies)
 - [Project Steps](#projectsteps)
