@@ -277,6 +277,203 @@ jobs:
    - `sonar-project.properties`
 2. Push the changes to your GitHub repository
 
+### Pushing Code to GitHub
+1. Open a command prompt in your local repository
+2. Check status of changes: `git status`
+3. Add all changes: `git add *`
+4. Commit changes: `git commit -m "Added SonarQube SAST scan GitHub action to pipeline"`
+5. Push changes: `git push`
+
+### Verifying GitHub Action Execution
+1. Go to your GitHub repository
+2. Click on the "Actions" tab
+3. You should see a workflow run named "Run SAST scan on Super Mario Game Project"
+4. Click on the workflow run to see details
+5. Expand the "SonarQube Scan" step to see execution details
+
+![gh](/assets/githubactionspush.png)
+![gh2](/assets/githubactionspushsuccess.png)
+![gh3](/assets/guthubactionssteps.png)
+
+### Viewing SonarQube Results
+1. Log in to your SonarQube dashboard
+2. Go to the "Projects" tab
+3. Click on your project name to see detailed results
+4. Review different categories of issues:
+   - Bugs
+   - Vulnerabilities
+   - Security Hotspots
+   - Code Smells
+   - Duplications
+
+![gh3](/assets/sonarqpipelinestatus.png)
+
+### Understanding SonarQube Ratings
+- SonarQube assigns ratings (A to E) for different issue types based on their severity and quantity
+- Review ratings for security, reliability, and maintainability
+
+### GitHub Actions Workflow File
+- You can view and edit the workflow file directly in GitHub
+- Navigate to `.github/workflows/gitops.yaml` in your repository
+
+## Setting Up Docker Hub
+1. Go to [Docker Hub](https://hub.docker.com/)
+2. Click on the "Sign Up" option
+3. You can sign up using Google, GitHub, or directly with an email
+4. If using Google, select your Google account and click "Continue"
+5. Enter a username 
+6. Click the "Sign Up" button
+7. Your Docker Hub account is now created successfully
+
+## Creating a Docker Hub Repository
+1. Log in to your Docker Hub account
+2. Click on your profile icon to view your account details
+3. Click on the "Create Repository" option
+4. Choose "Public" for the repository visibility
+   - Public repos appear in Docker Hub search results
+   - Private repos are only visible to you
+5. Provide a repository name (e.g., "Super Mario GitOps Project")
+6. Click the "Create" button
+7. Your repository is now created under your Docker Hub username
+
+### File: `GitOps-build-push-super-mario-image.yaml`
+* Please note to update to your dockerhub repository: docker.io/[insert docker repo]:${{ env.VERSION }} 
+```yaml
+name: "Build and push Super Mario Docker image with dynamic tag to Docker Hub"
+ 
+on:
+  push:
+    branches:
+      - main
+ 
+env:
+  VERSION: $(( $(cat version.txt) + 1 ))
+  
+jobs:
+  
+  build_push_supermario_docker_image:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+   
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+ 
+      - name: Build and Push Docker Image
+
+        run: |
+          docker build -t docker.io/ryanabynoe/supermarioproject:${{ env.VERSION }} .
+          docker push docker.io/ryanabynoe/supermarioproject:${{ env.VERSION }}
+```
+
+### Updating GitHub Actions Workflow
+1. Rename `gitops.yaml` to `gitops-sast-sonar.yaml`
+2. Create a new file `gitops-build-push-super-mario-image.yaml`
+3. Update the workflows as needed (e.g., commenting out triggers in the SAST workflow)
+
+### File: `GitOps-sast-sonar.yaml`
+```yaml
+name: "Run SAST Scan on SuperMario Game Project"
+
+on:
+  push:
+    branches:
+      - main
+  
+jobs:
+
+  sonarqube_sast_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis relevance
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_HOST_URL: ${{secrets.SONAR_HOST_URL}}
+          SONAR_TOKEN: ${{secrets.SONAR_TOKEN}}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # - name: SonarQube Quality Gate Check
+      #   uses: sonarsource/sonarqube-quality-gate-action@master
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+ ```
+
+1. In your GitHub repository, go to Settings > Secrets and add the following repository secrets:
+   - `DOCKER_HUB_TOKEN`: Your Docker Hub access token
+   - `DOCKER_HUB_USERNAME`: Your Docker Hub username
+2. Push changes to the main branch to trigger the workflow
+
+### Creating Docker Hub Access Token
+1. Log in to Docker Hub
+2. Go to My Account > Security
+3. Click on "New Access Token"
+4. Provide a description (e.g., "GitHub GitOps practice")
+5. Set permissions to "Read, Write, Delete"
+6. Generate and copy the token
+
+### Pushing Changes and Running the Workflow
+1. Commit and push the changes to GitHub
+2. Go to the Actions tab in your GitHub repository
+3. Verify that the new workflow "Build Push Super Mario Docker Image" runs successfully
+
+### Verifying Docker Image Push
+1. Check the GitHub Actions logs for successful build and push steps
+2. Log in to Docker Hub and navigate to your repository
+3. Verify that the new image is present with the correct tag (e.g., "1")
+
+### Docker Image Details
+- Repository: `[Your Docker Hub Username]/super-mario-gitops-project`
+- Initial Tag: "1" (static)
+- Image contains labels and metadata as defined in the Dockerfile
+
+## Implementing Dynamic Docker Image Tagging
+
+### Steps to Implement Dynamic Tagging
+1. Add a `version.txt` file at the root of the repository
+   - Initially contains the value "1"
+
+2. Update the GitHub Actions workflow file
+   - Create an environment variable `VERSION` that reads from `version.txt` and increments by 1
+   - Use this `VERSION` variable when building and pushing the Docker image
+
+3. Push changes to the GitHub repository
+
+### Workflow File Changes
+```yaml
+jobs:
+  build-push-super-mario-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      # ... (previous steps)
+      
+      - name: Generate Image Tag
+        run: |
+          echo "VERSION=$(($(cat version.txt) + 1))" >> $GITHUB_ENV
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/super-mario-gitops-project:${{ env.VERSION }}
+```
+### Verifying Dynamic Tagging
+1. Check the GitHub Actions logs to see the new tag being used
+2. Verify in Docker Hub that a new image with the incremented tag has been pushed
+
+### Current Limitation
+The current implementation doesn't update the `version.txt` file after pushing a new image. This means subsequent runs will always increment from the original value in `version.txt`.
+
+
 # Challenges
 
 Error with Microsoft.ContainerService. Resolution: Confirming my subscription had the service registered.
